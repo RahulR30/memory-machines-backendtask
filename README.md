@@ -40,7 +40,7 @@ curl -X POST https://ingest-api-591662268404.us-central1.run.app/ingest \
 The pipeline uses an event‑driven setup where ingestion and processing run as independent services. This keeps the API responsive even under heavy load.
 
 ```mermaid
-flowchart TD
+flowchart LR
     %% Nodes
     Client([Client Request])
     API[Ingest API]
@@ -49,15 +49,15 @@ flowchart TD
     DB[(Firestore)]
 
     %% Flow
-    Client -->|Send JSON or Text Logs| API
-    API -->|Normalize & Publish| PS
-    PS -->|Push Subscription| Worker
-    Worker -->|Process & Store| DB
+    Client -->|JSON/Text| API
+    API -->|Normalize| PS
+    PS -.->|Subscription| Worker
+    Worker -->|Write| DB
 
-    %% Styling
-    classDef compute fill:#d0e0ff,stroke:#0033cc,stroke-width:2px;
-    classDef storage fill:#fff5b0,stroke:#d4a017,stroke-width:2px;
-    classDef queue fill:#e8d0ff,stroke:#6600cc,stroke-width:2px;
+    %% Styling - Dark Mode Optimized
+    classDef compute fill:#2c3e50,stroke:#5dade2,stroke-width:2px,color:white;
+    classDef storage fill:#7f8c8d,stroke:#f1c40f,stroke-width:2px,color:white;
+    classDef queue fill:#4a235a,stroke:#af7ac5,stroke-width:2px,color:white;
 
     class API,Worker compute;
     class DB storage;
