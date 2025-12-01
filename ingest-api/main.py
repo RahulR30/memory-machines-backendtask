@@ -8,12 +8,11 @@ from google.cloud import pubsub_v1
 
 app = FastAPI()
 
-# Configuration (We will set these in Google Cloud later)
+# Configuration
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "your-project-id-here")
 TOPIC_ID = "ingestion-topic"
 
-# Initialize Pub/Sub Publisher (Only works if you have credentials, handled later)
-# For now, we will wrap this in a try/except so you can run it locally without errors.
+# Initialize Pub/Sub Publisher
 try:
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
@@ -33,20 +32,18 @@ async def ingest_data(
 ):
     content_type = request.headers.get("content-type", "")
     
-    # --- STEP A: Normalization Logic  ---
     final_payload = {}
     
     if "application/json" in content_type:
-        # Scenario 1: JSON Payload
+        # JSON Payload
         try:
             body = await request.json()
-            # Validate required fields
             if "tenant_id" not in body or "text" not in body:
                 raise HTTPException(status_code=400, detail="Missing tenant_id or text in JSON")
             
             final_payload = {
                 "tenant_id": body["tenant_id"],
-                "log_id": body.get("log_id", "generated-id"), # Handle missing log_id if needed
+                "log_id": body.get("log_id", "generated-id"),
                 "text": body["text"],
                 "source": "json_upload"
             }
@@ -54,7 +51,7 @@ async def ingest_data(
             raise HTTPException(status_code=400, detail="Invalid JSON")
 
     elif "text/plain" in content_type:
-        # Scenario 2: Unstructured Text
+        # Unstructured Text
         if not x_tenant_id:
             raise HTTPException(status_code=400, detail="X-Tenant-ID header required for text")
         
@@ -62,8 +59,8 @@ async def ingest_data(
         text_content = body_bytes.decode("utf-8")
         
         final_payload = {
-            "tenant_id": x_tenant_id, # Extracted from Header 
-            "log_id": "generated-log-id", # You might want to use UUID here
+            "tenant_id": x_tenant_id,
+            "log_id": "generated-log-id",
             "text": text_content,
             "source": "text_upload"
         }
@@ -71,7 +68,6 @@ async def ingest_data(
     else:
         raise HTTPException(status_code=415, detail="Unsupported Content-Type")
 
-    # --- STEP B: Publish to Broker [cite: 34] ---
     # We serialize the normalized data to JSON bytes
     data_str = json.dumps(final_payload)
     data_bytes = data_str.encode("utf-8")
@@ -84,11 +80,9 @@ async def ingest_data(
             print(f"Published message {message_id}")
         except Exception as e:
             print(f"Publishing failed: {e}")
-            # In a real scenario, you might return 500, but for now we log it.
     else:
         print(f"[LOCAL TEST] Would publish: {final_payload}")
 
-    # --- STEP C: Return Instant 202 [cite: 67] ---
     return {"status": "accepted", "message": "Log queued for processing"}
 
 # To run: uvicorn main:app --reload
